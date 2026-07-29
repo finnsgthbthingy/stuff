@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>...</title>
+    <style>
+        /* Base styles - Pitch Black */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        #boot-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000;
+            color: #22c55e;
+            font-size: 0.85rem;
+            padding: 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            z-index: 10;
+        }
+
+        .boot-ok {
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        .boot-fail {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .boot-warn {
+            color: #eab308;
+            font-weight: bold;
+        }
+
+        .boot-info {
+            color: #9ca3af;
+        }
+
+        #arg-interface {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            width: 90%;
+            max-width: 500px;
+            z-index: 1;
+        }
+
+        
+        .label {
+            font-size: 1.2rem;
+            color: #888888;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+            text-transform: lowercase;
+        }
+
+        
+        .input-group {
+            display: flex;
+            width: 100%;
+            border-bottom: 1px solid #333333;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-group:focus-within {
+            border-bottom-color: #ffffff;
+        }
+
+        
+        input[type="text"] {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1rem;
+            padding: 8px 0;
+            outline: none;
+        }
+
+        
+        .submit-btn {
+            background: transparent;
+            border: none;
+            color: #666666;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            padding: 8px 0 8px 12px;
+            cursor: pointer;
+            text-transform: lowercase;
+            letter-spacing: 1px;
+            transition: color 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            color: #ffffff;
+        }
+
+        
+        #response-log {
+            margin-top: 25px;
+            font-size: 1rem;
+            color: #cccccc;
+            line-height: 1.5;
+            min-height: 30px;
+            word-break: break-word;
+        }
+
+        
+        #media-display {
+            margin-top: 15px;
+            width: 100%;
+        }
+
+        #media-display img,
+        #media-display video {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #333333;
+            display: block;
+        }
+
+      
+        #media-display video {
+            pointer-events: none;
+        }
+
+        
+        .visible {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="boot-screen"></div>
+
+    <div id="arg-interface">
+        <label for="prompt-input" class="label">speak.</label>
+        <div class="input-group">
+            <input type="text" id="prompt-input" autocomplete="off" spellcheck="false" autofocus>
+            <button id="submit-btn" class="submit-btn">submit</button>
+        </div>
+        <div id="response-log"></div>
+        <div id="media-display"></div>
+    </div>
+
+<script>
+const bootLogs = [
+    { type: "info", text: "Linux version 6.8.0-generic (buildd@lcy02-amd64) #64-Ubuntu SMP PREEMPT_DYNAMIC" },
+    { type: "info", text: "Command line: BOOT_IMAGE=/boot/vmlinuz root=UUID=xxxxxxxx ro quiet splash" },
+    { type: "info", text: "x86/fpu: Supporting XSAVE feature 0x001: 'x87 floating point registers'" },
+    { type: "info", text: "BIOS-provided physical RAM map:" },
+    { type: "info", text: "ACPI: Early table checksum verification disabled" },
+    { type: "info", text: "SMBIOS 3.5.0 present." },
+    { type: "info", text: "DMI: Generic PC/UEFI" },
+    { type: "info", text: "e820: BIOS-provided physical RAM map" },
+    { type: "info", text: "NX protection: active" },
+    { type: "info", text: "Secure boot disabled" },
+    { type: "info", text: "Kernel command line parsed" },
+    { type: "info", text: "Zone ranges:" },
+    { type: "info", text: "Built 1 zonelists, mobility grouping on." },
+    { type: "info", text: "Memory: 16254MB available" },
+    { type: "info", text: "Calibrating delay loop..." },
+    { type: "info", text: "CPU: Intel(R) Core(TM) i7 Processor detected" },
+    { type: "info", text: "Initializing cgroup subsys cpuset" },
+    { type: "info", text: "Initializing cgroup subsys cpu" },
+    { type: "info", text: "PCI: Using configuration type 1" },
+    { type: "info", text: "ACPI: Interpreter enabled" },
+    { type: "info", text: "usbcore: registered new interface driver usbfs" },
+    { type: "info", text: "usbcore: registered new interface driver hub" },
+    { type: "info", text: "usbcore: registered new device driver usb" },
+    { type: "info", text: "NET: Registered PF_INET protocol family" },
+    { type: "info", text: "Bluetooth: Core ver 2.22" },
+    { type: "info", text: "Loading compiled-in X.509 certificates" },
+    { type: "info", text: "EXT4-fs (nvme0n1p2): mounted filesystem" },
+
+    { type: "ok", text: "Mounted Kernel Configuration File System." },
+    { type: "ok", text: "Mounted FUSE Control File System." },
+    { type: "ok", text: "Started Journal Service." },
+    { type: "ok", text: "Started Load Kernel Modules." },
+    { type: "ok", text: "Mounted Huge Pages File System." },
+    { type: "ok", text: "Mounted POSIX Message Queue File System." },
+    { type: "ok", text: "Started Remount Root and Kernel File Systems." },
+    { type: "ok", text: "Started Apply Kernel Variables." },
+    { type: "ok", text: "Started Coldplug All udev Devices." },
+    { type: "ok", text: "Started Create Static Device Nodes in /dev." },
+    { type: "ok", text: "Started Rule-based Manager for Device Events and Files." },
+    { type: "ok", text: "Reached target Local File Systems." },
+    { type: "ok", text: "Started Network Name Resolution." },
+    { type: "ok", text: "Started Network Manager." },
+    { type: "ok", text: "Started D-Bus System Message Bus." },
+    { type: "ok", text: "Started Login Service." },
+    { type: "ok", text: "Started Authorization Manager." },
+    { type: "ok", text: "Started Bluetooth Service." },
+    { type: "ok", text: "Started User Login Management." },
+    { type: "ok", text: "Started Save/Restore Sound Card State." },
+    { type: "ok", text: "Started Power Profiles Daemon." },
+    { type: "ok", text: "Started Accounts Service." },
+    { type: "ok", text: "Started Disk Manager." },
+    { type: "ok", text: "Started CUPS Scheduler." },
+    { type: "ok", text: "Started Time & Date Service." },
+    { type: "ok", text: "Reached target Sound Card." },
+    { type: "ok", text: "Reached target Multi-User System." },
+    { type: "ok", text: "Started GNOME Display Manager." },
+    { type: "ok", text: "Reached target Graphical Interface." },
+
+    
+
+    { type: "warn", text: "Unknown PCI device responded after enumeration." },
+    { type: "warn", text: "udevd: received malformed event from device 255." },
+    { type: "warn", text: "Kernel: unable to identify process using /dev/mem." },
+
+    { type: "ok", text: "Started Entity Connection Listener." },
+
+    { type: "warn", text: "Process 1 reported unexpected child process." },
+
+    { type: "fail", text: "FAILED: Unable to terminate observer.service." },
+
+    { type: "warn", text: "Filesystem reports one additional mounted user." },
+
+    { type: "info", text: "Synchronizing unknown session..." },
+
+    { type: "ok", text: "Session synchronized." },
+
+    { type: "warn", text: "User authentication bypassed." },
+
+    { type: "info", text: "One terminal remains active." },
+
+    { type: "info", text: "Awaiting input." }
+];
+
+const bootScreen = document.getElementById('boot-screen');
+const interfaceContainer = document.getElementById('arg-interface');
+const inputField = document.getElementById('prompt-input');
+const submitBtn = document.getElementById('submit-btn');
+const responseLog = document.getElementById('response-log');
+const mediaDisplay = document.getElementById('media-display');
+
+let activeAudio = null;
+function runBootSequence() {
+    let index = 0;
+    
+    const bootInterval = setInterval(() => {
+        if (index < bootLogs.length) {
+            const log = bootLogs[index];
+            const line = document.createElement('div');
+            
+            
+            const timestamp = `[ ${(index * 0.042183).toFixed(6)}] `;
+            
+            if (log.type === 'ok') {
+                line.innerHTML = `<span class="boot-info">${timestamp}</span>[ <span class="boot-ok"> OK </span> ] ${log.text}`;
+            } else if (log.type === 'fail') {
+                line.innerHTML = `<span class="boot-info">${timestamp}</span>[<span class="boot-fail">FAILED</span>] ${log.text}`;
+            } else if (log.type === 'warn') {
+                line.innerHTML = `<span class="boot-info">${timestamp}</span>[ <span class="boot-warn">WARN</span> ] ${log.text}`;
+            } else {
+                line.innerHTML = `<span class="boot-info">${timestamp}${log.text}</span>`;
+            }
+
+            bootScreen.appendChild(line);
+            bootScreen.scrollTop = bootScreen.scrollHeight; // Auto-scroll to bottom
+            index++;
+        } else {
+            clearInterval(bootInterval);
+            
+            
+            setTimeout(() => {
+                bootScreen.style.display = 'none';
+                interfaceContainer.classList.add('visible');
+                inputField.focus();
+            }, 1000);
+        }
+    }, 60);
+}
+
+
+runBootSequence();
+
+const database = {
+    "hello": {
+        text: "You aren't supposed to be here."
+    },
+    "watch": {
+        text: "Do not look away."
+    },
+    "telefragger": {
+        text: "",
+        video: "https://raw.githubusercontent.com/finnsgthbthingy/stuff/main/Teledancing%20(1).mp4"
+    },
+    "look": {
+        text: "Do you see it now?"
+    },
+    "gilbertisscary": {
+        text: "no he isnt",
+        video: "https://raw.githubusercontent.com/finnsgthbthingy/stuff/main/lv_0_20260729204037.mp4"
+    },
+    "inspiredbynullscape": {
+        text: "uhh nuh uh. (yes it is)"
+    },
+        "who am i?": {
+        text: "i dont know either."
+    },
+"entry": {
+    text: "Entry 1: I finally made it inside. The entrance was sealed, but time did most of the work for me. The doors were already half-open, like someone left in a hurry.\
+    The air smells different down here. Old metal, dust... and something I can't identify.\
+    I was told this place was abandoned years ago. I’m starting to wonder if that was the truth.\
+    I’ll keep moving. If anyone finds this, maybe they’ll understand what happened here."
+},
+"whathappenedtohim": {
+    text: "Entry 2:\n\nI didn't come here willingly.\n\nThe message came through the radio. They didn't ask me to go. They ordered me.\n\nThey said I was expendable. That if something happened inside this facility, nobody would come looking for me.\n\nWhen I arrived, there was a paper waiting on the table. No name. No explanation. Just instructions.\n\n\"We want you to find a classified document and get out of there. If you see any anomalies, do not try to be a hero. Best of luck.\"\n\nI don't know who they are, or why they chose me.\n\nBut I know one thing now... they never expected me to come back."
+},
+"findher.ogg": {
+    sound: "https://raw.githubusercontent.com/finnsgthbthingy/stuff/main/Deltarune%20OST%20findher.ogg.mp3",
+    text: "..."
+},
+    "default": {
+        text: "Silence echoes back."
+    }
+};
+
+function resetMedia() {
+    if (activeAudio) {
+        activeAudio.pause();
+        activeAudio.currentTime = 0;
+        activeAudio = null;
+    }
+
+    const existingVideo = mediaDisplay.querySelector('video');
+    if (existingVideo) {
+        existingVideo.pause();
+        existingVideo.src = "";
+        existingVideo.load();
+    }
+
+    mediaDisplay.innerHTML = '';
+}
+
+function handleSubmit() {
+    const query = inputField.value.trim().toLowerCase();
+    if (query === "") return;
+
+    inputField.value = '';
+    resetMedia();
+
+    const entry = database[query] || database["default"];
+
+    if (entry.sound) {
+        activeAudio = new Audio(entry.sound);
+        activeAudio.play().catch(e => console.log("Audio playback blocked:", e));
+    }
+
+    if (entry.gif) {
+        const img = document.createElement('img');
+        img.src = entry.gif;
+        img.alt = "visual response";
+        mediaDisplay.appendChild(img);
+    }
+
+    if (entry.video) {
+        const video = document.createElement('video');
+        video.src = entry.video;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.controls = false;
+        
+        video.play().catch(e => {
+            console.log("Unmuted autoplay blocked, attempting muted playback:", e);
+            video.muted = true;
+            video.play();
+        });
+
+        mediaDisplay.appendChild(video);
+    }
+
+    typeResponse(entry.text || '');
+}
+
+submitBtn.addEventListener('click', handleSubmit);
+
+inputField.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        handleSubmit();
+    }
+});
+
+function typeResponse(text) {
+    responseLog.textContent = '';
+    let index = 0;
+    
+    const interval = setInterval(() => {
+        if (index < text.length) {
+            responseLog.textContent += text.charAt(index);
+            index++;
+        } else {
+            clearInterval(interval);
+        }
+    }, 50);
+}
+</script>
+</body>
+  </html>
